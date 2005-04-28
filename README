@@ -10,6 +10,21 @@ To install this module type the following:
    make test
    make install
 
+TEST SCRIPT
+
+This distribution includes a test script, "test.pl" - running this
+script allows you to easily test the module. It will ask for three
+fields upon startup:
+
+  YahooID>  A Yahoo! username for the "bot" to sign on with.
+  Password> The password to the above mentioned YahooID.
+  Contact>  A username for the "bot" to say hello to right when it
+            signs on (optional).
+
+The test also displays two ways in which you can send a message with
+fonts/colors: doing it the hard way (as in on_connect) or the easy way
+(on_im).
+
 DEPENDENCIES
 
 This module requires these other modules and libraries:
@@ -40,5 +55,8 @@ COPYRIGHT AND LICENCE
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  - Used protocol docs from http://www.venkydude.com/articles/yahoo.htm
+  - Some code referenced from Matt Austin's YahooSimple.pm (www.bot-depot.com)
 
 

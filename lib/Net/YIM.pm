@@ -8,7 +8,7 @@ use LWP::UserAgent;
 use HTTP::Request;
 use Data::Dumper;   # debugging
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
 	my $proto = shift;
@@ -52,7 +52,7 @@ sub connect {
 		) or die "Net::YIM Connection error: $!";
 
 		$self->{select}->add ($self->{socket});
-		$self->sendraw (10,30,0,"\x30À€$self->{username}À€1À€$self->{username}À€6À€$self->{yv}; $self->{tz}"."À€");
+		$self->sendraw (10,30,0,"\x30\xC0\x80$self->{username}\xC0\x801\xC0\x80$self->{username}\xC0\x806\xC0\x80$self->{yv}; $self->{tz}"."\xC0\x80");
 		$self->{lastping} = time();
 	}
 	else {
@@ -111,13 +111,13 @@ sub do_one_loop {
 			$self->{identifier} = $identifier;
 
 			if ($event_code == 85) {
-				my ($listdata) = $data =~ /À€(.*?)À€/s;
+				my ($listdata) = $data =~ /\xC0\x80(.*?)\xC0\x80/s;
 				@{$self->{buddylist}->{$1}} = split(",", $2) while ($listdata =~ m/(.*?):(.*?)\n/gs);
-				$self->sendraw (10,150,0,"1À€$self->{username}À€6À€abcdefÀ€98À€usÀ€135À€dc125À80");
+				$self->sendraw (10,150,0,"1\xC0\x80$self->{username}\xC0\x806\xC0\x80abcdef\xC0\x8098\xC0\x80us\xC0\x80135\xC0\x80dc125\xC080");
 				$self->_event ('Connected');
 			}
 			elsif ($event_code == 6) {
-				my ($to,$from,$msg) = $data =~ /À€(.*?)À€4À€(.*?)À€\d+À€(.*?)À€/;
+				my ($to,$from,$msg) = $data =~ /\xC0\x80(.*?)\xC0\x804\xC0\x80(.*?)\xC0\x80\d+\xC0\x80(.*?)\xC0\x80/;
 				$self->_event ('Message',$from,$msg);
 			}
 			else {
@@ -148,8 +148,35 @@ sub getBuddies {
 }
 
 sub sendMessage {
-	my ($self,$to,$message) = @_;
-	my $body = "1À€$self->{username}À€5À€$toÀ€14À€$messageÀ€97À€1À€63À€;0À€64À€0À€1002À€1À€206À€2À80";
+	my ($self,$to,$message,%data) = @_;
+
+	# For easy usage, %data can be a hash setting up basic message data
+	# (so you don't have to mess with ASCII codes yourself):
+	# font => Font family
+	# color => Color (HEX Codes)
+	# style => B, I, U
+	if (%data) {
+		# (re)format the message.
+		my $prefix = '';
+		my $newmsg = $message;
+		if (exists $data{color}) {
+			$prefix = "\x1B[$data{color}m";
+		}
+		if (exists $data{font}) {
+			$prefix .= "<font face=\"$data{font}\">";
+		}
+		if (exists $data{style}) {
+			my @parts = split(//, $data{style});
+			foreach my $part (@parts) {
+				$part = uc($part);
+				next unless $part =~ /^(B|I|U)$/i;
+				$newmsg = "<$part>$newmsg</$part>";
+			}
+		}
+		$message = join ("", $prefix, $newmsg);
+	}
+
+	my $body = "1\xC0\x80$self->{username}\xC0\x805\xC0\x80$to\xC0\x8014\xC0\x80$message\xC0\x8097\xC0\x801\xC0\x8063\xC0\x80;0\xC0\x8064\xC0\x800\xC0\x801002\xC0\x801\xC0\x80206\xC0\x802\xC080";
 	$self->sendraw (0,32,1515563605,$body);
 }
 
@@ -217,11 +244,16 @@ Does a single loop on the CHAT2 server.
 
   $yahoo->do_one_loop;
 
-=head2 sendMessage (TO, MESSAGE)
+=head2 sendMessage (TO, MESSAGE[, DATA])
 
-Send a message to recipient TO.
+Send a message to recipient TO. Optionally pass in hash "DATA" to define message font,
+color, and style.
 
-  $yahoo->sendMessage ("YahooMaster", "Greetings from Perl YIM!");
+  $yahoo->sendMessage ("YahooMaster", "Greetings from Perl YIM!",
+       font  => 'Comic Sans MS',
+       color => '#ff0000', # red
+       style => 'BI',      # bold italics
+  );
 
 =head2 listGroups
 
@@ -241,7 +273,12 @@ Cerone J. Kirsle, cerone[at]aichaos[dot]com
 
 =head1 CHANGES
 
+Version 0.02
+
+  - Cleaned up the code (used \x escape codes instead of including actual ASCII characters, etc.)
+
 Version 0.01
+
   - Initial release.
 
 =head1 COPYRIGHT AND LICENSE
@@ -262,5 +299,8 @@ Version 0.01
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+  - Used protocol docs from http://www.venkydude.com/articles/yahoo.htm
+  - Some code referenced from Matt Austin's YahooSimple.pm (www.bot-depot.com)
 
 =cut

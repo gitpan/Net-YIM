@@ -7,11 +7,18 @@ use lib "./lib";
 
 use Net::YIM;
 
+print "YahooID> ";
+chomp (our $user = <STDIN>);
+print "Password> ";
+chomp (our $pass = <STDIN>);
+print "Contact> ";
+chomp (our $contact = <STDIN>);
+
 # Create a new Yahoo.
 my $yahoo = new Net::YIM (
-	username => 'PerlYIM',
-	password => 'bigsecret',
-	debug    => 0,
+	username => $user,
+	password => $pass,
+	debug    => 1,
 );
 
 # Set handlers.
@@ -29,9 +36,11 @@ sub on_connect {
 
 	print "Connected to YIM!\n";
 
-	# Say hi to Kirsle!
-	$self->sendMessage ("YahooID","<ding>");
-	$self->sendMessage ("YahooID","I am <b>connected</b>!");
+	return unless $contact;
+
+	# Say hi to our contact!
+	$self->sendMessage ($contact,"<ding>");
+	$self->sendMessage ($contact,"\x1B[#ff0000m<font face=\"Verdana\">I am <b>connected</b>!");
 }
 
 sub on_im {
@@ -47,5 +56,9 @@ sub on_im {
 	$msg =~ s/<(.|\n)+?>//ig;
 
 	print "[$from] $msg\n";
-	$self->sendMessage ("$from","You said: $msg");
+	$self->sendMessage ("$from","You said: $msg",
+		font  => 'Comic Sans MS',
+		color => '#FF00FF',
+		style => 'BI',
+	);
 }
